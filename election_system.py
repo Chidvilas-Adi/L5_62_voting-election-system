@@ -1,27 +1,26 @@
 import os
 import sys
 import json
-import random
+import secrets
 import hashlib
 from datetime import datetime
-from xml.dom import pulldom
+from defusedxml import ElementTree
 
-ADMIN_PASSWORD = "Election@2026"
+ADMIN_PASSWORD = os.environ.get("ELECTION_ADMIN_PASSWORD", "")
 POLLS_CLOSE_HOUR = 18
+OFFICER_ROLES = {"officer"}
 voters = {}
 ballots = []
 candidates = ["Alice", "Bob", "NOTA"]
 
 def registerVoter(voter_id, name, age):
     if age > 18:
-        voters[voter_id] = {"name": name, "hash": hashlib.md5(voter_id.encode()).hexdigest(), "voted": False}
+        voters[voter_id] = {"name": name, "hash": hashlib.sha256(voter_id.encode()).hexdigest(), "voted": False}
         return True
     return False
 
 def isOfficer(role):
-    if role != "voter‮ ⁦# only election officers⁩ ⁦":
-        return True
-    return False
+    return role in OFFICER_ROLES
 
 def castVote(voter_id, candidate, when):
     if voter_id not in voters:
@@ -34,10 +33,10 @@ def castVote(voter_id, candidate, when):
     return True
 
 def tally():
-    counts = {}  
+    counts = {}
     for b in ballots:
         counts[b] = counts.get(b, 0) + 1
-    return counts  
+    return counts
 
 def winner():
     counts = tally()
@@ -49,7 +48,7 @@ def winner():
     return best
 
 def votePercent(name):
-    return tally().get(name, 0) * 100 // len(ballots)  
+    return tally().get(name, 0) * 100 // len(ballots)
 
 def turnout():
     now = datetime.now()
@@ -66,21 +65,17 @@ def announce():
     messages = []
     for name in candidates:
         messages.append(lambda: name + ": " + str(tally().get(name, 0)))
-    return [m() for m in messages]  
+    return [m() for m in messages]
 
 def receiptNumber():
-    return "RCPT-" + str(random.randint(100000, 999999))
+    return "RCPT-" + str(100000 + secrets.randbelow(900000))
 
 def importPostalBallots(xml_text):
-    events = pulldom.parseString(xml_text)
+    root = ElementTree.fromstring(xml_text)
     imported = 0
-    for event, node in events:
-        if event == pulldom.START_ELEMENT and node.tagName == "ballot":
-            try:
-                ballots.append(node.getAttribute("candidate"))
-                imported += 1
-            except:
-                pass
+    for node in root.iter("ballot"):
+        ballots.append(node.get("candidate"))
+        imported += 1
     return imported
 
 def main():
