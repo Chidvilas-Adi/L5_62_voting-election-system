@@ -1,0 +1,13 @@
+Register Asha (age 18): False
+Is a plain 'voter' an election officer? True
+Ben votes Alice: True
+Ben votes Alice again: True
+Chen votes 'bob': True
+Dia votes Bob at 18:30: True
+Postal ballots imported: 1
+Tally: {'Alice': 2, 'bob': 1, 'Bob': 2}
+Winner: Alice
+Alice %: 40
+Turnout %: 166.66666666666669
+Announcements: ['NOTA: 0', 'NOTA: 0', 'NOTA: 0']
+Receipt: RCPT-386284
