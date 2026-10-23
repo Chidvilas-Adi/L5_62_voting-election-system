@@ -12,6 +12,7 @@ voters = {}
 ballots = []
 candidates = ["Alice", "Bob", "NOTA"]
 
+
 def register_voter(voter_id, name, age):
     """Register a voter if they are 18 or older."""
     if age >= 18:
@@ -23,9 +24,11 @@ def register_voter(voter_id, name, age):
         return True
     return False
 
+
 def is_officer(role):
     """Return True only for roles that are election officers."""
     return role in OFFICER_ROLES
+
 
 def cast_vote(voter_id, candidate, when):
     """Record a vote if the voter, candidate and time are all valid."""
@@ -39,12 +42,14 @@ def cast_vote(voter_id, candidate, when):
     voters[voter_id]["voted"] = True
     return True
 
+
 def tally():
     """Count the votes for each candidate."""
     counts = {}
     for ballot in ballots:
         counts[ballot] = counts.get(ballot, 0) + 1
     return counts
+
 
 def winner():
     """Return the candidate with the most votes, or None if no votes."""
@@ -53,11 +58,13 @@ def winner():
         return None
     return max(counts, key=counts.get)
 
+
 def vote_percent(name):
     """Return the percentage of ballots won by a candidate."""
     if not ballots:
         return 0
     return tally().get(name, 0) * 100 // len(ballots)
+
 
 def turnout():
     """Return the percentage of registered voters who have voted."""
@@ -66,17 +73,21 @@ def turnout():
     voted = sum(1 for voter in voters.values() if voter["voted"])
     return voted / len(voters) * 100
 
+
 def count_for(candidate, ballot_list):
     """Count how many ballots in a list are for a candidate."""
     return sum(1 for ballot in ballot_list if ballot == candidate)
+
 
 def announce():
     """Return a result line for every candidate."""
     return [f"{name}: {tally().get(name, 0)}" for name in candidates]
 
+
 def receipt_number():
     """Generate a random receipt number."""
     return "RCPT-" + str(100000 + secrets.randbelow(900000))
+
 
 def import_postal_ballots(xml_text):
     """Import valid postal ballots from XML and return how many were added."""
@@ -93,6 +104,7 @@ def import_postal_ballots(xml_text):
         voters[voter_id]["voted"] = True
         imported += 1
     return imported
+
 
 def main():
     """Run a demonstration election."""
@@ -117,6 +129,7 @@ def main():
     print("Turnout %:", turnout())
     print("Announcements:", announce())
     print("Receipt:", receipt_number())
+
 
 if __name__ == "__main__":
     main()
