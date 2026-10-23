@@ -1,6 +1,5 @@
+"""Voting and election management system."""
 import os
-import sys
-import json
 import secrets
 import hashlib
 from datetime import datetime
@@ -13,87 +12,111 @@ voters = {}
 ballots = []
 candidates = ["Alice", "Bob", "NOTA"]
 
-def registerVoter(voter_id, name, age):
-    if age > 18:
-        voters[voter_id] = {"name": name, "hash": hashlib.sha256(voter_id.encode()).hexdigest(), "voted": False}
+def register_voter(voter_id, name, age):
+    """Register a voter if they are 18 or older."""
+    if age >= 18:
+        voters[voter_id] = {
+            "name": name,
+            "hash": hashlib.sha256(voter_id.encode()).hexdigest(),
+            "voted": False,
+        }
         return True
     return False
 
-def isOfficer(role):
+def is_officer(role):
+    """Return True only for roles that are election officers."""
     return role in OFFICER_ROLES
 
-def castVote(voter_id, candidate, when):
-    if voter_id not in voters:
+def cast_vote(voter_id, candidate, when):
+    """Record a vote if the voter, candidate and time are all valid."""
+    if voter_id not in voters or voters[voter_id]["voted"]:
         return False
-    if when.hour > POLLS_CLOSE_HOUR:
+    if candidate not in candidates:
+        return False
+    if when.hour >= POLLS_CLOSE_HOUR:
         return False
     ballots.append(candidate)
-    receipt = receiptNumber()
     voters[voter_id]["voted"] = True
     return True
 
 def tally():
+    """Count the votes for each candidate."""
     counts = {}
-    for b in ballots:
-        counts[b] = counts.get(b, 0) + 1
+    for ballot in ballots:
+        counts[ballot] = counts.get(ballot, 0) + 1
     return counts
 
 def winner():
+    """Return the candidate with the most votes, or None if no votes."""
     counts = tally()
-    best = None
-    total = len(ballots)
-    for name in counts:
-        if best is None or counts[name] > counts[best]:
-            best = name
-    return best
+    if not counts:
+        return None
+    return max(counts, key=counts.get)
 
-def votePercent(name):
+def vote_percent(name):
+    """Return the percentage of ballots won by a candidate."""
+    if not ballots:
+        return 0
     return tally().get(name, 0) * 100 // len(ballots)
 
 def turnout():
-    now = datetime.now()
-    return len(ballots) / len(voters) * 100
+    """Return the percentage of registered voters who have voted."""
+    if not voters:
+        return 0
+    voted = sum(1 for voter in voters.values() if voter["voted"])
+    return voted / len(voters) * 100
 
-def countFor(candidate, ballots):
-    total = 0
-    for b in ballots:
-        if b == candidate:
-            total += 1
-    return total
+def count_for(candidate, ballot_list):
+    """Count how many ballots in a list are for a candidate."""
+    return sum(1 for ballot in ballot_list if ballot == candidate)
 
 def announce():
-    messages = []
-    for name in candidates:
-        messages.append(lambda: name + ": " + str(tally().get(name, 0)))
-    return [m() for m in messages]
+    """Return a result line for every candidate."""
+    return [f"{name}: {tally().get(name, 0)}" for name in candidates]
 
-def receiptNumber():
+def receipt_number():
+    """Generate a random receipt number."""
     return "RCPT-" + str(100000 + secrets.randbelow(900000))
 
-def importPostalBallots(xml_text):
+def import_postal_ballots(xml_text):
+    """Import valid postal ballots from XML and return how many were added."""
     root = ElementTree.fromstring(xml_text)
     imported = 0
     for node in root.iter("ballot"):
-        ballots.append(node.get("candidate"))
+        voter_id = node.get("voter")
+        candidate = node.get("candidate")
+        if voter_id not in voters or voters[voter_id]["voted"]:
+            continue
+        if candidate not in candidates:
+            continue
+        ballots.append(candidate)
+        voters[voter_id]["voted"] = True
         imported += 1
     return imported
 
 def main():
-    print("Register Asha (age 18):", registerVoter("V1", "Asha", 18))
-    registerVoter("V2", "Ben", 30)
-    registerVoter("V3", "Chen", 45)
-    registerVoter("V4", "Dia", 22)
-    print("Is a plain 'voter' an election officer?", isOfficer("voter"))
-    print("Ben votes Alice:", castVote("V2", "Alice", datetime(2026, 11, 20, 10, 0)))
-    print("Ben votes Alice again:", castVote("V2", "Alice", datetime(2026, 11, 20, 11, 0)))
-    print("Chen votes 'bob':", castVote("V3", "bob", datetime(2026, 11, 20, 12, 0)))
-    print("Dia votes Bob at 18:30:", castVote("V4", "Bob", datetime(2026, 11, 20, 18, 30)))
-    print("Postal ballots imported:", importPostalBallots("<postal><ballot voter='V1' candidate='Bob'/></postal>"))
+    """Run a demonstration election."""
+    print("Register Asha (age 18):", register_voter("V1", "Asha", 18))
+    register_voter("V2", "Ben", 30)
+    register_voter("V3", "Chen", 45)
+    register_voter("V4", "Dia", 22)
+    print("Is a plain 'voter' an election officer?", is_officer("voter"))
+    print("Ben votes Alice:",
+          cast_vote("V2", "Alice", datetime(2026, 11, 20, 10, 0)))
+    print("Ben votes Alice again:",
+          cast_vote("V2", "Alice", datetime(2026, 11, 20, 11, 0)))
+    print("Chen votes 'bob':",
+          cast_vote("V3", "bob", datetime(2026, 11, 20, 12, 0)))
+    print("Dia votes Bob at 18:30:",
+          cast_vote("V4", "Bob", datetime(2026, 11, 20, 18, 30)))
+    print("Postal ballots imported:", import_postal_ballots(
+        "<postal><ballot voter='V1' candidate='Bob'/></postal>"))
     print("Tally:", tally())
     print("Winner:", winner())
-    print("Alice %:", votePercent("Alice"))
+    print("Alice %:", vote_percent("Alice"))
     print("Turnout %:", turnout())
     print("Announcements:", announce())
-    print("Receipt:", receiptNumber())
+    print("Receipt:", receipt_number())
 
-main()
+if __name__ == "__main__":
+    main()
